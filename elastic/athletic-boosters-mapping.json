@@ -1,0 +1,54 @@
+{
+  "mappings": {
+    "properties": {
+      "donor_id": { "type": "keyword" },
+      "first_name": { "type": "keyword" },
+      "last_name": { "type": "keyword" },
+      "email": { "type": "keyword" },
+      "graduation_year": { "type": "integer" },
+      "degree": { "type": "keyword" },
+      "portfolio_status": { "type": "keyword" },
+      "location": {
+        "properties": {
+          "city": { "type": "keyword" },
+          "state": { "type": "keyword" },
+          "zip": { "type": "keyword" }
+        }
+      },
+      "giving_history": {
+        "properties": {
+          "lifetime_total": { "type": "float" },
+          "last_gift_date": { "type": "date" },
+          "last_gift_amount": { "type": "float" },
+          "gift_count": { "type": "integer" },
+          "largest_gift": { "type": "float" },
+          "restricted_to": { "type": "keyword" }
+        }
+      },
+      "engagement": {
+        "properties": {
+          "email_open_rate_90d": { "type": "float" },
+          "last_email_open": { "type": "date" },
+          "events_attended_ytd": { "type": "integer" },
+          "game_attendance_count": { "type": "integer" },
+          "video_play_rate": { "type": "float" },
+          "portal_logins_90d": { "type": "integer" }
+        }
+      },
+      "wealth_signals": {
+        "properties": {
+          "iwave_score": { "type": "integer" },
+          "estimated_capacity": { "type": "keyword" },
+          "real_estate_value_est": { "type": "long" },
+          "business_ownership": { "type": "boolean" },
+          "political_giving_total": { "type": "float" }
+        }
+      },
+      "affinity_score": { "type": "float" },
+      "bio_text": {
+        "type": "semantic_text",
+        "inference_id": ".elser-2-elasticsearch"
+      }
+    }
+  }
+}
