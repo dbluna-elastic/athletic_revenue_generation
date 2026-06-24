@@ -1,0 +1,214 @@
+{
+  "title": "Booster Engagement — At-Risk Donors",
+  "panels": [
+    {
+      "type": "vis",
+      "id": "at-risk-count",
+      "grid": { "x": 0, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM booster-engagement-events | STATS avg_signal = AVG(signal_value) BY donor_id | WHERE avg_signal < 50 | STATS `At-Risk Donors` = COUNT(*)"
+        },
+        "metrics": [{ "type": "primary", "column": "At-Risk Donors" }]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "high-affinity-at-risk",
+      "grid": { "x": 12, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM booster-engagement-events | STATS avg_signal = AVG(signal_value) BY donor_id | WHERE avg_signal < 50 | LOOKUP JOIN booster-donor-lookup ON donor_id | WHERE affinity_score >= 70 | STATS `High-Affinity At-Risk` = COUNT(*)"
+        },
+        "metrics": [{ "type": "primary", "column": "High-Affinity At-Risk" }]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "avg-at-risk-signal",
+      "grid": { "x": 24, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM booster-engagement-events | STATS avg_signal = AVG(signal_value) BY donor_id | WHERE avg_signal < 50 | STATS `Avg Signal (At-Risk)` = AVG(avg_signal)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Avg Signal (At-Risk)",
+            "format": { "type": "number", "decimals": 1 }
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "total-events",
+      "grid": { "x": 36, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM booster-engagement-events | STATS `Total Events` = COUNT(*)"
+        },
+        "metrics": [{ "type": "primary", "column": "Total Events" }]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "at-risk-bar",
+      "grid": { "x": 0, "y": 5, "w": 24, "h": 12 },
+      "config": {
+        "title": "Lowest Engagement Signals (Linked Donors)",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar_horizontal",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM booster-engagement-events | STATS avg_signal = AVG(signal_value) BY donor_id | WHERE avg_signal < 50 | LOOKUP JOIN booster-donor-lookup ON donor_id | EVAL donor_name = CONCAT(first_name, \" \", last_name) | SORT avg_signal ASC | LIMIT 15"
+            },
+            "x": { "column": "avg_signal", "format": { "type": "number", "decimals": 1 } },
+            "y": [{ "column": "donor_name" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "signal-by-event-type",
+      "grid": { "x": 24, "y": 5, "w": 24, "h": 12 },
+      "config": {
+        "title": "Avg Signal by Event Type (Low-Signal Events)",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM booster-engagement-events | WHERE signal_value < 50 | STATS avg_signal = AVG(signal_value) BY event_type | SORT avg_signal ASC"
+            },
+            "x": { "column": "event_type" },
+            "y": [{ "column": "avg_signal", "format": { "type": "number", "decimals": 1 } }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "low-signal-over-time",
+      "grid": { "x": 0, "y": 17, "w": 24, "h": 12 },
+      "config": {
+        "title": "Low-Signal Events Over Time",
+        "type": "xy",
+        "axis": {
+          "x": {
+            "title": { "visible": false },
+            "scale": "temporal",
+            "domain": { "type": "fit", "rounding": false }
+          },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "area",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM booster-engagement-events | WHERE signal_value < 50 AND event_date <= ?_tend AND event_date > ?_tstart | STATS `Low-Signal Events` = COUNT(*) BY BUCKET(event_date, 75, ?_tstart, ?_tend)"
+            },
+            "x": {
+              "column": "BUCKET(event_date, 75, ?_tstart, ?_tend)",
+              "label": "event_date"
+            },
+            "y": [{ "column": "Low-Signal Events" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "at-risk-distribution",
+      "grid": { "x": 24, "y": 17, "w": 24, "h": 12 },
+      "config": {
+        "title": "At-Risk Donors by Signal Tier",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM booster-engagement-events | STATS avg_signal = AVG(signal_value) BY donor_id | WHERE avg_signal < 50 | EVAL tier = CASE(avg_signal < 15, \"Critical (<15)\", avg_signal < 30, \"High Risk (15-30)\", \"Moderate (30-50)\") | STATS count = COUNT(*) BY tier | SORT count DESC"
+            },
+            "x": { "column": "tier" },
+            "y": [{ "column": "count" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "high-affinity-table",
+      "grid": { "x": 0, "y": 29, "w": 48, "h": 12 },
+      "config": {
+        "title": "High-Affinity Donors with Declining Engagement",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM booster-engagement-events | STATS avg_signal = AVG(signal_value), event_count = COUNT(*) BY donor_id | WHERE avg_signal < 50 | LOOKUP JOIN booster-donor-lookup ON donor_id | WHERE affinity_score >= 70 | EVAL donor_name = CONCAT(first_name, \" \", last_name) | SORT affinity_score DESC | KEEP donor_id, donor_name, state, affinity_score, avg_signal, event_count | LIMIT 25"
+        },
+        "rows": [{ "column": "donor_name" }, { "column": "donor_id" }, { "column": "state" }],
+        "metrics": [
+          { "column": "affinity_score", "format": { "type": "number", "decimals": 1 } },
+          { "column": "avg_signal", "format": { "type": "number", "decimals": 1 } },
+          { "column": "event_count" }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "alert-table",
+      "grid": { "x": 0, "y": 41, "w": 48, "h": 14 },
+      "config": {
+        "title": "All At-Risk Donors (Alert Query + CRM Link)",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM booster-engagement-events | STATS avg_signal = AVG(signal_value), event_count = COUNT(*) BY donor_id | WHERE avg_signal < 50 | LOOKUP JOIN booster-donor-lookup ON donor_id | EVAL donor_name = CONCAT(first_name, \" \", last_name) | SORT avg_signal ASC | KEEP donor_id, donor_name, state, degree, affinity_score, avg_signal, event_count | LIMIT 100"
+        },
+        "rows": [
+          { "column": "donor_name" },
+          { "column": "donor_id" },
+          { "column": "state" },
+          { "column": "degree" }
+        ],
+        "metrics": [
+          { "column": "affinity_score", "format": { "type": "number", "decimals": 1 } },
+          { "column": "avg_signal", "format": { "type": "number", "decimals": 1 } },
+          { "column": "event_count" }
+        ]
+      }
+    }
+  ],
+  "time_range": { "from": "now-90d", "to": "now" }
+}

@@ -6,4 +6,5 @@ venv/
 node_modules/
 dist/
 data/donors.ndjson
+data/engagement-events-low-signal.ndjson
 .DS_Store

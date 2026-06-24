@@ -1,0 +1,8 @@
+FROM booster-engagement-events
+| STATS avg_signal = AVG(signal_value), event_count = COUNT(*) BY donor_id
+| WHERE avg_signal < 50
+| LOOKUP JOIN booster-donor-lookup ON donor_id
+| EVAL donor_name = CONCAT(first_name, " ", last_name)
+| SORT avg_signal ASC
+| KEEP donor_id, donor_name, state, affinity_score, avg_signal, event_count
+| LIMIT 100

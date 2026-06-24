@@ -74,19 +74,65 @@ Uses RRF over two `match` queries on `bio_text` (ELSER semantic_text) with TX / 
 
 ```
 scripts/
-  generate_donors.py   # Synthetic data → NDJSON
-  create_index.py      # Create athletic-boosters index
+  generate_donors.py          # Synthetic donors → NDJSON
+  generate_engagement_events.py  # Low-signal events for at-risk alert
+  create_index.py             # Create athletic-boosters index
   bulk_index.py        # Bulk load donors.ndjson
   validate_data.py     # Tier + demo query checks
   es_config.py         # Shared ES client
+  create_donor_lookup.py      # Sync athletic-boosters → lookup index for joins
+  deploy_kibana_dashboard.py
 elastic/
   athletic-boosters-mapping.json
   demo-hybrid-search.json
+kibana/
+  at-risk-engagement-dashboard.json
 data/
   donors.ndjson        # Generated (gitignored)
 ```
 
-### Golden records
+### Kibana dashboard
+
+Deploy the at-risk engagement dashboard:
+
+```bash
+export KIBANA_URL=https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com
+export KIBANA_API_KEY=$ELASTICSEARCH_API_KEY
+python scripts/deploy_kibana_dashboard.py
+```
+
+Or open directly: [Booster Engagement — At-Risk Donors](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/dashboards#/view/booster-at-risk-engagement)
+
+Panels include:
+- **At-Risk Donors** and **High-Affinity At-Risk** KPIs (linked via lookup index)
+- Bar chart with donor **names** (not just IDs)
+- **High-Affinity Donors with Declining Engagement** table
+- **All At-Risk Donors (Alert Query + CRM Link)** — name, state, degree, affinity, signal
+
+
+The `booster-engagement-events` index powers an ES|QL alert for donors with declining engagement (`avg_signal < 50`).
+
+```bash
+# Seed low-signal events for high-affinity donors (triggers alert)
+python scripts/generate_engagement_events.py
+
+# Preview only (writes NDJSON, no index)
+python scripts/generate_engagement_events.py --dry-run
+```
+
+Default run adds ~1,000 events across 25 high-affinity donors (no prior events) plus borderline donors near the threshold. After indexing, the alert query returns **27+ matches** (up from 1).
+
+### Donor profile lookup (CRM link)
+
+Dashboard panels join at-risk `donor_id`s to names and affinity from `athletic-boosters` via `booster-donor-lookup`:
+
+```bash
+python scripts/create_donor_lookup.py --recreate
+python scripts/deploy_kibana_dashboard.py
+```
+
+Uses ES|QL `LOOKUP JOIN booster-donor-lookup ON donor_id` — see `elastic/at-risk-donors-linked.esql`.
+
 
 The first 50 generated donors are seeded as high-affinity Texas prospects: 10+ game attendance, iWave 75–99, $2M+ real estate, and strong giving — so the demo query surfaces known hits in the top results.
 
