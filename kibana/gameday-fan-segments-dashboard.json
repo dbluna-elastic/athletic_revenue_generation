@@ -1,0 +1,258 @@
+{
+  "title": "Game Day Revenue — Fan Segments & Anomalies",
+  "panels": [
+    {
+      "type": "vis",
+      "id": "premium-revenue-kpi",
+      "grid": { "x": 0, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM paciolan-ticket-events | WHERE fan_tier == \"Premium\" | STATS `Premium Revenue` = SUM(ticket_price)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Premium Revenue",
+            "format": { "type": "number", "decimals": 0 }
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "student-scans-kpi",
+      "grid": { "x": 12, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM paciolan-ticket-events | WHERE fan_tier == \"Student\" | STATS `Student Scans` = COUNT(*)"
+        },
+        "metrics": [{ "type": "primary", "column": "Student Scans" }]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "outage-txn-kpi",
+      "grid": { "x": 24, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM square-pos-transactions | WHERE stand_id IN (\"S04\", \"S06\", \"S09\") AND transaction_time >= TO_DATETIME(\"2025-09-06T15:50:00Z\") AND transaction_time <= TO_DATETIME(\"2025-09-06T16:05:00Z\") | STATS `Outage Window Txns` = COUNT(*)"
+        },
+        "metrics": [{ "type": "primary", "column": "Outage Window Txns" }]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "avg-ticket-kpi",
+      "grid": { "x": 36, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM paciolan-ticket-events | STATS `Avg Ticket Price` = AVG(ticket_price)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Avg Ticket Price",
+            "format": { "type": "number", "decimals": 2 }
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "revenue-by-tier",
+      "grid": { "x": 0, "y": 5, "w": 24, "h": 12 },
+      "config": {
+        "title": "Ticket Revenue by Fan Tier",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM paciolan-ticket-events | STATS revenue = SUM(ticket_price), scans = COUNT(*) BY fan_tier | SORT revenue DESC"
+            },
+            "x": { "column": "fan_tier" },
+            "y": [{ "column": "revenue", "format": { "type": "number", "decimals": 0 } }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "scans-by-tier",
+      "grid": { "x": 24, "y": 5, "w": 24, "h": 12 },
+      "config": {
+        "title": "Gate Scans by Fan Tier",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar_horizontal",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM paciolan-ticket-events | STATS scans = COUNT(*) BY fan_tier | SORT scans DESC"
+            },
+            "x": { "column": "scans" },
+            "y": [{ "column": "fan_tier" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "avg-price-by-tier",
+      "grid": { "x": 0, "y": 17, "w": 24, "h": 12 },
+      "config": {
+        "title": "Average Ticket Price by Fan Tier",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM paciolan-ticket-events | STATS avg_price = AVG(ticket_price) BY fan_tier | SORT avg_price DESC"
+            },
+            "x": { "column": "fan_tier" },
+            "y": [{ "column": "avg_price", "format": { "type": "number", "decimals": 2 } }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "stand-txn-anomaly-window",
+      "grid": { "x": 24, "y": 17, "w": 24, "h": 12 },
+      "config": {
+        "title": "Stand Activity During Outage Window (15:50–16:05)",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM square-pos-transactions | WHERE transaction_time >= TO_DATETIME(\"2025-09-06T15:50:00Z\") AND transaction_time <= TO_DATETIME(\"2025-09-06T16:05:00Z\") | STATS txns = COUNT(*) BY stand_id | SORT stand_id ASC"
+            },
+            "x": { "column": "stand_id" },
+            "y": [{ "column": "txns" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "category-mix",
+      "grid": { "x": 0, "y": 29, "w": 24, "h": 10 },
+      "config": {
+        "title": "POS Revenue by Item Category",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar_horizontal",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM square-pos-transactions | STATS revenue = SUM(total_amount) BY category | SORT revenue DESC | LIMIT 12"
+            },
+            "x": { "column": "revenue", "format": { "type": "number", "decimals": 0 } },
+            "y": [{ "column": "category" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "payment-methods",
+      "grid": { "x": 24, "y": 29, "w": 24, "h": 10 },
+      "config": {
+        "title": "POS Transactions by Payment Method",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM square-pos-transactions | STATS txns = COUNT(*) BY payment_method | SORT txns DESC"
+            },
+            "x": { "column": "payment_method" },
+            "y": [{ "column": "txns" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "fan-tier-table",
+      "grid": { "x": 0, "y": 39, "w": 24, "h": 12 },
+      "config": {
+        "title": "Fan Segment Summary (Paciolan)",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM paciolan-ticket-events | STATS revenue = SUM(ticket_price), scans = COUNT(*), avg_price = AVG(ticket_price) BY fan_tier, ticket_type | SORT revenue DESC"
+        },
+        "rows": [{ "column": "fan_tier" }, { "column": "ticket_type" }],
+        "metrics": [
+          { "column": "revenue", "format": { "type": "number", "decimals": 0 } },
+          { "column": "scans" },
+          { "column": "avg_price", "format": { "type": "number", "decimals": 2 } }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "anomaly-stands-table",
+      "grid": { "x": 24, "y": 39, "w": 24, "h": 12 },
+      "config": {
+        "title": "Anomaly Stands — Full Game vs Outage Window",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM square-pos-transactions | WHERE stand_id IN (\"S04\", \"S06\", \"S09\") | STATS full_game_txns = COUNT(*), full_game_revenue = SUM(total_amount) BY stand_id, stand_name | SORT stand_id ASC"
+        },
+        "rows": [{ "column": "stand_id" }, { "column": "stand_name" }],
+        "metrics": [
+          { "column": "full_game_txns" },
+          { "column": "full_game_revenue", "format": { "type": "number", "decimals": 0 } }
+        ]
+      }
+    }
+  ],
+  "time_range": {
+    "from": "2025-09-06T13:00:00.000Z",
+    "to": "2025-09-06T18:00:00.000Z"
+  }
+}

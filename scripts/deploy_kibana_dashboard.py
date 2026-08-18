@@ -13,7 +13,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parents[1]
+from es_config import ROOT
+from demo_profile import add_profile_argument, load_profile, substitute_indexes
+
 load_dotenv(ROOT / ".env")
 
 API_VERSION = "2023-10-31"
@@ -47,8 +49,21 @@ def kibana_request(method: str, path: str, body: dict | None = None) -> dict:
         raise SystemExit(f"Kibana API {method} {path} failed ({exc.code}): {detail}") from exc
 
 
-def deploy_dashboard(spec_path: Path, dashboard_id: str | None = None) -> str:
+def apply_profile_to_spec(spec: dict, profile) -> dict:
+    raw = json.dumps(spec)
+    raw = substitute_indexes(raw, profile)
+    updated = json.loads(raw)
+    if "title" in updated:
+        updated["title"] = profile.title(updated["title"])
+    return updated
+
+
+def deploy_dashboard(spec_path: Path, dashboard_id: str | None = None, profile=None) -> str:
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    if profile is not None:
+        spec = apply_profile_to_spec(spec, profile)
+        if dashboard_id and profile.index_prefix:
+            dashboard_id = profile.dashboard_id(dashboard_id)
     if dashboard_id:
         result = kibana_request("PUT", f"/api/dashboards/{dashboard_id}", spec)
     else:
@@ -64,6 +79,7 @@ def deploy_dashboard(spec_path: Path, dashboard_id: str | None = None) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Deploy Kibana dashboard JSON")
+    add_profile_argument(parser)
     parser.add_argument(
         "spec",
         type=Path,
@@ -76,7 +92,8 @@ def main() -> None:
         help="Dashboard ID for upsert (PUT)",
     )
     args = parser.parse_args()
-    deploy_dashboard(args.spec, args.id)
+    profile = load_profile(args.profile)
+    deploy_dashboard(args.spec, args.id, profile=profile)
 
 
 if __name__ == "__main__":

@@ -6,10 +6,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from es_config import INDEX_NAME, ROOT, get_client
+from es_config import ROOT, get_client
+from demo_profile import add_profile_argument, load_profile
 
 
-def bulk_index(client, ndjson_path: Path, chunk_size: int = 500) -> None:
+def bulk_index(client, ndjson_path: Path, index_name: str, chunk_size: int = 500) -> None:
     if not ndjson_path.exists():
         raise SystemExit(
             f"File not found: {ndjson_path}\nRun: python scripts/generate_donors.py"
@@ -20,7 +21,7 @@ def bulk_index(client, ndjson_path: Path, chunk_size: int = 500) -> None:
         raise SystemExit("NDJSON file has odd line count; expected index/doc pairs")
 
     total_docs = len(lines) // 2
-    print(f"Indexing {total_docs} documents from {ndjson_path} → {INDEX_NAME}")
+    print(f"Indexing {total_docs} documents from {ndjson_path} → {index_name}")
 
     indexed = 0
     errors = []
@@ -36,7 +37,7 @@ def bulk_index(client, ndjson_path: Path, chunk_size: int = 500) -> None:
         indexed += min(chunk_size, total_docs - indexed)
         print(f"  … {indexed}/{total_docs}")
 
-    client.indices.refresh(index=INDEX_NAME)
+    client.indices.refresh(index=index_name)
 
     if errors:
         print(f"✗ Bulk index completed with {len(errors)} errors")
@@ -44,13 +45,13 @@ def bulk_index(client, ndjson_path: Path, chunk_size: int = 500) -> None:
             print(f"  - {err}")
         raise SystemExit(1)
 
-    count = client.count(index=INDEX_NAME)["count"]
+    count = client.count(index=index_name)["count"]
     print(f"✓ Indexed successfully. Document count: {count}")
 
 
-def verify_sample(client) -> None:
+def verify_sample(client, index_name: str) -> None:
     sample = client.search(
-        index=INDEX_NAME,
+        index=index_name,
         size=1,
         sort=[{"affinity_score": "desc"}],
         _source=["donor_id", "affinity_score", "bio_text", "location.state"],
@@ -69,19 +70,25 @@ def verify_sample(client) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bulk index donors.ndjson")
+    add_profile_argument(parser)
     parser.add_argument(
         "--file",
         type=Path,
-        default=ROOT / "data" / "donors.ndjson",
+        default=None,
     )
     parser.add_argument("--chunk-size", type=int, default=50)
     parser.add_argument("--verify", action="store_true", help="Print sample doc after index")
     args = parser.parse_args()
+    profile = load_profile(args.profile)
+    index_name = profile.index("athletic-boosters")
+    ndjson_path = args.file or ROOT / "data" / (
+        "okstate-donors.ndjson" if profile.index_prefix else "donors.ndjson"
+    )
 
     client = get_client()
-    bulk_index(client, args.file, args.chunk_size)
+    bulk_index(client, ndjson_path, index_name, args.chunk_size)
     if args.verify:
-        verify_sample(client)
+        verify_sample(client, index_name)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,77 @@
+{
+  "retriever": {
+    "rrf": {
+      "retrievers": [
+        {
+          "standard": {
+            "query": {
+              "bool": {
+                "should": [
+                  {
+                    "match": {
+                      "bio_text": "Oklahoma alumni football games real estate"
+                    }
+                  }
+                ],
+                "filter": [
+                  { "term": { "location.state": "OK" } },
+                  {
+                    "range": {
+                      "engagement.game_attendance_count": { "gte": 3 }
+                    }
+                  },
+                  {
+                    "range": {
+                      "wealth_signals.real_estate_value_est": { "gte": 2000000 }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "standard": {
+            "query": {
+              "bool": {
+                "should": [
+                  {
+                    "match": {
+                      "bio_text": "Oklahoma alumni football games real estate holdings"
+                    }
+                  }
+                ],
+                "filter": [
+                  { "term": { "location.state": "OK" } },
+                  {
+                    "range": {
+                      "engagement.game_attendance_count": { "gte": 3 }
+                    }
+                  },
+                  {
+                    "range": {
+                      "wealth_signals.real_estate_value_est": { "gte": 2000000 }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "rank_window_size": 50,
+      "rank_constant": 20
+    }
+  },
+  "size": 20,
+  "_source": [
+    "donor_id",
+    "first_name",
+    "last_name",
+    "affinity_score",
+    "location",
+    "engagement.game_attendance_count",
+    "wealth_signals.real_estate_value_est",
+    "wealth_signals.iwave_score"
+  ]
+}

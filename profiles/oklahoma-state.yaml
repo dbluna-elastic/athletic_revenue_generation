@@ -1,0 +1,99 @@
+id: oklahoma-state
+display_name: Oklahoma State Athletics
+index_prefix: okstate-
+home_state: OK
+fund_name: Cowboy Athletics fund
+dashboard_title_prefix: Oklahoma State
+demo_query: Oklahoma alumni football games real estate holdings
+states: [OK, TX, KS, AR, CO, CA, MO, NM]
+state_weights: [40, 22, 10, 8, 6, 5, 5, 4]
+game_id: OKSTATE-2025-HOME-01
+gates:
+  - Gate 1 — West
+  - Gate 2 — South
+  - Gate 3 — East
+  - Gate 4 — North
+  - Student Gate
+  - Pistol Pete Plaza
+stands:
+  - id: S01
+    name: Boone Pickens North Beer Garden
+    zone: North
+    items:
+      - [Draft Beer, 12.0]
+      - [Craft Beer, 14.0]
+      - [Wine, 11.0]
+      - [Spirits, 13.0]
+  - id: S02
+    name: Cowboy Grill — Gate 1
+    zone: North
+    items:
+      - [Hot Dog, 7.0]
+      - [Nachos, 9.0]
+      - [Soda, 5.0]
+      - [Water, 4.0]
+      - [Burger, 12.0]
+  - id: S03
+    name: South End Zone Cantina
+    zone: South
+    items:
+      - [Tacos, 11.0]
+      - [Draft Beer, 12.0]
+      - [Soda, 5.0]
+      - [Chips, 6.0]
+  - id: S04
+    name: Club Orange Premium Bar
+    zone: Premium
+    items:
+      - [Craft Beer, 16.0]
+      - [Wine, 14.0]
+      - [Cocktail, 18.0]
+      - [Charcuterie, 22.0]
+  - id: S05
+    name: Student Section Snacks
+    zone: Student
+    items:
+      - [Hot Dog, 6.0]
+      - [Soda, 4.0]
+      - [Popcorn, 5.0]
+      - [Water, 3.0]
+  - id: S06
+    name: West Concourse Grill
+    zone: West
+    items:
+      - [Burger, 12.0]
+      - [Draft Beer, 12.0]
+      - [Fries, 7.0]
+      - [Soda, 5.0]
+  - id: S07
+    name: Cowboy Team Store — Main
+    zone: Main
+    items:
+      - [Jersey, 120.0]
+      - [Hat, 35.0]
+      - [Shirt, 45.0]
+      - [Hoodie, 75.0]
+  - id: S08
+    name: Cowboy Team Store — South
+    zone: South
+    items:
+      - [Jersey, 120.0]
+      - [Hat, 35.0]
+      - [Pennant, 18.0]
+      - [Shirt, 45.0]
+  - id: S09
+    name: East End Zone Bar
+    zone: East
+    items:
+      - [Draft Beer, 12.0]
+      - [Craft Beer, 14.0]
+      - [Spirits, 13.0]
+      - [Shot, 9.0]
+  - id: S10
+    name: Visiting Fan Concessions
+    zone: Visitor
+    items:
+      - [Hot Dog, 7.0]
+      - [Soda, 5.0]
+      - [Nachos, 9.0]
+      - [Water, 4.0]

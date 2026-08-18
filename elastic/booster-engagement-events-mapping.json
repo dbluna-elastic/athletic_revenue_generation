@@ -1,0 +1,12 @@
+{
+  "mappings": {
+    "properties": {
+      "campaign": { "type": "keyword" },
+      "donor_id": { "type": "keyword" },
+      "event_date": { "type": "date" },
+      "event_type": { "type": "keyword" },
+      "fiscal_year": { "type": "keyword" },
+      "signal_value": { "type": "float" }
+    }
+  }
+}

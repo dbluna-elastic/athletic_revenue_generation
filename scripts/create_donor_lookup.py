@@ -6,9 +6,8 @@ from __future__ import annotations
 import argparse
 import json
 
-from es_config import INDEX_NAME as BOOSTERS_INDEX, get_client
-
-LOOKUP_INDEX = "booster-donor-lookup"
+from es_config import get_client
+from demo_profile import add_profile_argument, load_profile
 
 LOOKUP_MAPPING = {
     "settings": {"index.mode": "lookup"},
@@ -26,21 +25,21 @@ LOOKUP_MAPPING = {
 }
 
 
-def recreate_lookup_index(client, recreate: bool) -> None:
-    if client.indices.exists(index=LOOKUP_INDEX):
+def recreate_lookup_index(client, lookup_index: str, recreate: bool) -> None:
+    if client.indices.exists(index=lookup_index):
         if recreate:
-            print(f"Deleting {LOOKUP_INDEX}")
-            client.indices.delete(index=LOOKUP_INDEX)
+            print(f"Deleting {lookup_index}")
+            client.indices.delete(index=lookup_index)
         else:
-            print(f"{LOOKUP_INDEX} already exists (use --recreate to rebuild)")
+            print(f"{lookup_index} already exists (use --recreate to rebuild)")
             return
-    print(f"Creating lookup index: {LOOKUP_INDEX}")
-    client.indices.create(index=LOOKUP_INDEX, body=LOOKUP_MAPPING)
+    print(f"Creating lookup index: {lookup_index}")
+    client.indices.create(index=lookup_index, body=LOOKUP_MAPPING)
 
 
-def sync_profiles(client, chunk_size: int = 500) -> int:
+def sync_profiles(client, boosters_index: str, lookup_index: str, chunk_size: int = 500) -> int:
     response = client.search(
-        index=BOOSTERS_INDEX,
+        index=boosters_index,
         scroll="2m",
         size=chunk_size,
         _source=[
@@ -74,7 +73,7 @@ def sync_profiles(client, chunk_size: int = 500) -> int:
                 "graduation_year": src.get("graduation_year"),
             }
             lines.append(
-                json.dumps({"index": {"_index": LOOKUP_INDEX, "_id": doc["donor_id"]}})
+                json.dumps({"index": {"_index": lookup_index, "_id": doc["donor_id"]}})
             )
             lines.append(json.dumps(doc))
 
@@ -88,17 +87,23 @@ def sync_profiles(client, chunk_size: int = 500) -> int:
         response = client.scroll(scroll_id=scroll_id, scroll="2m")
 
     client.clear_scroll(scroll_id=scroll_id)
-    client.indices.refresh(index=LOOKUP_INDEX)
+    client.indices.refresh(index=lookup_index)
     return total
 
 
-def verify_join(client) -> None:
+def verify_join(client, engagement_index: str, lookup_index: str) -> None:
+    if not client.indices.exists(index=engagement_index):
+        print(f"Skip join check — {engagement_index} does not exist yet")
+        return
+    if client.count(index=engagement_index)["count"] == 0:
+        print(f"Skip join check — {engagement_index} is empty")
+        return
     result = client.esql.query(
         query=f"""
-        FROM booster-engagement-events
+        FROM {engagement_index}
         | STATS avg_signal = AVG(signal_value), event_count = COUNT(*) BY donor_id
         | WHERE avg_signal < 50
-        | LOOKUP JOIN {LOOKUP_INDEX} ON donor_id
+        | LOOKUP JOIN {lookup_index} ON donor_id
         | EVAL donor_name = CONCAT(first_name, " ", last_name)
         | SORT avg_signal ASC
         | KEEP donor_id, donor_name, state, affinity_score, avg_signal, event_count
@@ -112,15 +117,20 @@ def verify_join(client) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Sync athletic-boosters into lookup index")
+    add_profile_argument(parser)
     parser.add_argument("--recreate", action="store_true")
     args = parser.parse_args()
+    profile = load_profile(args.profile)
+    boosters_index = profile.index("athletic-boosters")
+    lookup_index = profile.index("booster-donor-lookup")
+    engagement_index = profile.index("booster-engagement-events")
 
     client = get_client()
-    recreate_lookup_index(client, args.recreate)
-    if args.recreate or not client.count(index=LOOKUP_INDEX)["count"]:
-        count = sync_profiles(client)
-        print(f"✓ Synced {count} donor profiles to {LOOKUP_INDEX}")
-    verify_join(client)
+    recreate_lookup_index(client, lookup_index, args.recreate)
+    if args.recreate or not client.count(index=lookup_index)["count"]:
+        count = sync_profiles(client, boosters_index, lookup_index)
+        print(f"✓ Synced {count} donor profiles to {lookup_index}")
+    verify_join(client, engagement_index, lookup_index)
 
 
 if __name__ == "__main__":

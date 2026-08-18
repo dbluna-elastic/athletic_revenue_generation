@@ -1,0 +1,17 @@
+{
+  "mappings": {
+    "properties": {
+      "event_id": { "type": "keyword" },
+      "game_id": { "type": "keyword" },
+      "scan_timestamp": { "type": "date" },
+      "gate": { "type": "keyword" },
+      "section": { "type": "keyword" },
+      "ticket_type": { "type": "keyword" },
+      "fan_tier": { "type": "keyword" },
+      "ticket_price": { "type": "float" },
+      "payment_method": { "type": "keyword" },
+      "is_resale": { "type": "boolean" },
+      "source_system": { "type": "keyword" }
+    }
+  }
+}

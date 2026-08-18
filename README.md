@@ -133,8 +133,110 @@ python scripts/deploy_kibana_dashboard.py
 
 Uses ES|QL `LOOKUP JOIN booster-donor-lookup ON donor_id` — see `elastic/at-risk-donors-linked.esql`.
 
+---
 
-The first 50 generated donors are seeded as high-affinity Texas prospects: 10+ game attendance, iWave 75–99, $2M+ real estate, and strong giving — so the demo query surfaces known hits in the top results.
+## Game Day Revenue Demo
+
+Live replay pipeline for **Live Revenue Ticker**, **Fan Segment Breakdown**, and **Revenue Anomaly Detection**. See [gameday-revenue-data-setup-plan.md](gameday-revenue-data-setup-plan.md).
+
+### Quick setup (Phase 1–3)
+
+```bash
+source .venv/bin/activate
+./scripts/setup_gameday.sh --recreate
+```
+
+Or step by step:
+
+```bash
+python scripts/create_gameday_indexes.py --recreate
+python scripts/gameday_replay.py seed
+python scripts/validate_gameday_data.py
+python scripts/setup_gameday_enrich.py --recreate
+python scripts/setup_gameday_ml.py --recreate --start
+```
+
+### Indexes
+
+| Index | Source | Docs (seeded) |
+|---|---|---|
+| `paciolan-ticket-events` | Paciolan gate scans | ~4,700 |
+| `square-pos-transactions` | Square/Clover POS | ~14,500 |
+
+**Game:** `GAME-2025-HOME-01` (2025-09-06 home opener) · **Combined revenue:** ~$908K  
+**Anomaly:** Stands S04, S06, S09 go dark 15:50–16:05 (validated: 0 transactions)
+
+### Live replay (demo session)
+
+```bash
+# Historical timestamps at 10× speed (~18 min)
+python scripts/gameday_replay.py replay --speed 10
+
+# Current UTC timestamps (Kibana "Last 15 minutes" filter)
+python scripts/gameday_replay.py replay --speed 10 --live
+```
+
+### ML anomaly job
+
+- Job ID: `gameday-stand-revenue`
+- View in Kibana → **Machine Learning → Anomaly Detection → Anomaly Explorer**
+
+### Kibana dashboards
+
+```bash
+python scripts/deploy_gameday_dashboards.py
+```
+
+| Dashboard | URL |
+|---|---|
+| **Live Overview** | [gameday-revenue-overview](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/dashboards#/view/gameday-revenue-overview) |
+| **Fan Segments & Anomalies** | [gameday-fan-segments](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/dashboards#/view/gameday-fan-segments) |
+
+Default time range: **2025-09-06 13:00–18:00 UTC** (game day). For live replay, switch to **Last 15 minutes** and run `python scripts/gameday_replay.py replay --speed 10 --live`.
+
+---
+
+## Oklahoma State profile (`okstate-`)
+
+A second, isolated copy of the demo for Oklahoma State Athletics. Existing Texas indexes are not modified.
+
+```bash
+source .venv/bin/activate
+./scripts/setup_okstate.sh
+```
+
+Or pass `--profile oklahoma-state` to any script:
+
+```bash
+python scripts/generate_donors.py --profile oklahoma-state
+python scripts/create_index.py --profile oklahoma-state --recreate
+python scripts/bulk_index.py --profile oklahoma-state --verify
+python scripts/gameday_replay.py --profile oklahoma-state seed
+python scripts/deploy_gameday_dashboards.py --profile oklahoma-state
+python scripts/deploy_kibana_dashboard.py --profile oklahoma-state kibana/at-risk-engagement-dashboard.json --id booster-at-risk-engagement
+```
+
+| Artifact | Name |
+|---|---|
+| Boosters | `okstate-athletic-boosters` |
+| Lookup | `okstate-booster-donor-lookup` |
+| Engagement | `okstate-booster-engagement-events` |
+| Tickets | `okstate-paciolan-ticket-events` |
+| POS | `okstate-square-pos-transactions` |
+| Enrich policy | `okstate-section-to-fan-tier` |
+| ML job | `okstate-gameday-stand-revenue` |
+
+Hybrid search body: `elastic/okstate-demo-hybrid-search.json` (`POST /okstate-athletic-boosters/_search`). Golden records are OK alumni.
+
+| Dashboard | URL |
+|---|---|
+| Live Overview | [okstate-gameday-revenue-overview](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/dashboards#/view/okstate-gameday-revenue-overview) |
+| Fan Segments & Anomalies | [okstate-gameday-fan-segments](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/dashboards#/view/okstate-gameday-fan-segments) |
+| At-Risk Donors | [okstate-booster-at-risk-engagement](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/dashboards#/view/okstate-booster-at-risk-engagement) |
+
+Profile definition: [profiles/oklahoma-state.yaml](profiles/oklahoma-state.yaml).
+
+### Golden records are seeded as high-affinity Texas prospects: 10+ game attendance, iWave 75–99, $2M+ real estate, and strong giving — so the demo query surfaces known hits in the top results.
 
 ## Next phases
 

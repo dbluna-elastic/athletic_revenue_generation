@@ -9,9 +9,8 @@ import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from es_config import INDEX_NAME as BOOSTERS_INDEX, ROOT, get_client
-
-ENGAGEMENT_INDEX = "booster-engagement-events"
+from es_config import ROOT, get_client
+from demo_profile import add_profile_argument, load_profile
 
 EVENT_TYPES = [
     ("portal_login", 0.05, 18),
@@ -30,20 +29,33 @@ CAMPAIGNS = [
 FISCAL_YEARS = ["FY2024", "FY2025", "FY2026"]
 
 
-def fetch_high_affinity_donors(client, limit: int) -> list[str]:
-    """Donors in athletic-boosters with high affinity but no engagement events yet."""
-    existing = client.esql.query(
-        query=f"""
-        FROM {ENGAGEMENT_INDEX}
-        | STATS cnt = COUNT(*) BY donor_id
-        | KEEP donor_id
-        | LIMIT 1000
-        """
+def ensure_engagement_index(client, engagement_index: str) -> None:
+    if client.indices.exists(index=engagement_index):
+        return
+    mapping = json.loads(
+        (ROOT / "elastic" / "booster-engagement-events-mapping.json").read_text(
+            encoding="utf-8"
+        )
     )
-    existing_ids = {row[0] for row in existing["values"]}
+    print(f"Creating {engagement_index}")
+    client.indices.create(index=engagement_index, mappings=mapping["mappings"])
+
+
+def fetch_high_affinity_donors(client, boosters_index: str, engagement_index: str, limit: int) -> list[str]:
+    existing_ids: set[str] = set()
+    if client.indices.exists(index=engagement_index) and client.count(index=engagement_index)["count"]:
+        existing = client.esql.query(
+            query=f"""
+            FROM {engagement_index}
+            | STATS cnt = COUNT(*) BY donor_id
+            | KEEP donor_id
+            | LIMIT 1000
+            """
+        )
+        existing_ids = {row[0] for row in existing["values"]}
 
     candidates = client.search(
-        index=BOOSTERS_INDEX,
+        index=boosters_index,
         size=limit * 3,
         query={"range": {"affinity_score": {"gte": 70}}},
         sort=[{"affinity_score": "desc"}],
@@ -59,11 +71,14 @@ def fetch_high_affinity_donors(client, limit: int) -> list[str]:
     return donor_ids
 
 
-def fetch_borderline_donors(client, limit: int = 10) -> list[str]:
-    """Donors with avg_signal just above 50 — a few low events pushes them under."""
+def fetch_borderline_donors(client, engagement_index: str, limit: int = 10) -> list[str]:
+    if not client.indices.exists(index=engagement_index):
+        return []
+    if client.count(index=engagement_index)["count"] == 0:
+        return []
     result = client.esql.query(
         query=f"""
-        FROM {ENGAGEMENT_INDEX}
+        FROM {engagement_index}
         | STATS avg_signal = AVG(signal_value), event_count = COUNT(*) BY donor_id
         | WHERE avg_signal >= 50 AND avg_signal < 55
         | SORT avg_signal ASC
@@ -123,11 +138,11 @@ def write_ndjson(events: list[dict], output_path: Path, index_name: str) -> None
             f.write(json.dumps(event) + "\n")
 
 
-def bulk_index(client, events: list[dict], chunk_size: int = 500) -> None:
+def bulk_index(client, events: list[dict], engagement_index: str, chunk_size: int = 500) -> None:
     lines = []
     for i, event in enumerate(events):
         doc_id = f"low-signal-{event['donor_id']}-{i}"
-        lines.append(json.dumps({"index": {"_index": ENGAGEMENT_INDEX, "_id": doc_id}}))
+        lines.append(json.dumps({"index": {"_index": engagement_index, "_id": doc_id}}))
         lines.append(json.dumps(event))
 
     total = len(events)
@@ -145,13 +160,17 @@ def bulk_index(client, events: list[dict], chunk_size: int = 500) -> None:
         indexed += min(chunk_size, total - indexed)
         print(f"  … {indexed}/{total}")
 
-    client.indices.refresh(index=ENGAGEMENT_INDEX)
+    client.indices.refresh(index=engagement_index)
 
 
-def count_alert_matches(client) -> int:
+def count_alert_matches(client, engagement_index: str) -> int:
+    if not client.indices.exists(index=engagement_index):
+        return 0
+    if client.count(index=engagement_index)["count"] == 0:
+        return 0
     result = client.esql.query(
         query=f"""
-        FROM {ENGAGEMENT_INDEX}
+        FROM {engagement_index}
         | STATS avg_signal = AVG(signal_value), event_count = COUNT(*) BY donor_id
         | WHERE avg_signal < 50
         | STATS match_count = COUNT(*)
@@ -164,58 +183,36 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate low-signal engagement events for alert demo"
     )
-    parser.add_argument(
-        "--new-donors",
-        type=int,
-        default=25,
-        help="High-affinity donors with no existing events to seed",
-    )
-    parser.add_argument(
-        "--events-per-donor",
-        type=int,
-        default=40,
-        help="Low-signal events per new donor",
-    )
-    parser.add_argument(
-        "--borderline-donors",
-        type=int,
-        default=8,
-        help="Existing donors near threshold to push below 50",
-    )
-    parser.add_argument(
-        "--borderline-events",
-        type=int,
-        default=20,
-        help="Extra low events per borderline donor",
-    )
-    parser.add_argument(
-        "--signal-min",
-        type=float,
-        default=5.0,
-    )
-    parser.add_argument(
-        "--signal-max",
-        type=float,
-        default=35.0,
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=ROOT / "data" / "engagement-events-low-signal.ndjson",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Generate NDJSON only, do not index",
-    )
+    add_profile_argument(parser)
+    parser.add_argument("--new-donors", type=int, default=25)
+    parser.add_argument("--events-per-donor", type=int, default=40)
+    parser.add_argument("--borderline-donors", type=int, default=8)
+    parser.add_argument("--borderline-events", type=int, default=20)
+    parser.add_argument("--signal-min", type=float, default=5.0)
+    parser.add_argument("--signal-max", type=float, default=35.0)
+    parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+    profile = load_profile(args.profile)
+    boosters_index = profile.index("athletic-boosters")
+    engagement_index = profile.index("booster-engagement-events")
+    output = args.output or ROOT / "data" / (
+        "okstate-engagement-events-low-signal.ndjson"
+        if profile.index_prefix
+        else "engagement-events-low-signal.ndjson"
+    )
 
     client = get_client()
-    before = count_alert_matches(client)
+    ensure_engagement_index(client, engagement_index)
+    before = count_alert_matches(client, engagement_index)
     print(f"Alert matches before: {before}")
 
-    new_donor_ids = fetch_high_affinity_donors(client, args.new_donors)
-    borderline_ids = fetch_borderline_donors(client, args.borderline_donors)
+    new_donor_ids = fetch_high_affinity_donors(
+        client, boosters_index, engagement_index, args.new_donors
+    )
+    borderline_ids = fetch_borderline_donors(
+        client, engagement_index, args.borderline_donors
+    )
     print(f"Targeting {len(new_donor_ids)} new high-affinity donors")
     print(f"Targeting {len(borderline_ids)} borderline donors: {borderline_ids[:5]}…")
 
@@ -237,21 +234,21 @@ def main() -> None:
         )
     )
 
-    write_ndjson(events, args.output, ENGAGEMENT_INDEX)
-    print(f"Generated {len(events)} events → {args.output}")
+    write_ndjson(events, output, engagement_index)
+    print(f"Generated {len(events)} events → {output}")
 
     if args.dry_run:
         return
 
     print("Bulk indexing…")
-    bulk_index(client, events)
+    bulk_index(client, events, engagement_index)
 
-    after = count_alert_matches(client)
+    after = count_alert_matches(client, engagement_index)
     print(f"Alert matches after: {after}")
 
     preview = client.esql.query(
         query=f"""
-        FROM {ENGAGEMENT_INDEX}
+        FROM {engagement_index}
         | STATS avg_signal = AVG(signal_value), event_count = COUNT(*) BY donor_id
         | WHERE avg_signal < 50
         | SORT avg_signal ASC

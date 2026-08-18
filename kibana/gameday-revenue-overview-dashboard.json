@@ -1,0 +1,272 @@
+{
+  "title": "Game Day Revenue — Live Overview",
+  "panels": [
+    {
+      "type": "vis",
+      "id": "pos-revenue-kpi",
+      "grid": { "x": 0, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM square-pos-transactions | STATS `POS Revenue` = SUM(total_amount)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "POS Revenue",
+            "format": { "type": "number", "decimals": 0 }
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "ticket-revenue-kpi",
+      "grid": { "x": 12, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM paciolan-ticket-events | STATS `Ticket Revenue` = SUM(ticket_price)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Ticket Revenue",
+            "format": { "type": "number", "decimals": 0 }
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "pos-txn-kpi",
+      "grid": { "x": 24, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM square-pos-transactions | STATS `POS Transactions` = COUNT(*)"
+        },
+        "metrics": [{ "type": "primary", "column": "POS Transactions" }]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "ticket-scan-kpi",
+      "grid": { "x": 36, "y": 0, "w": 12, "h": 5 },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM paciolan-ticket-events | STATS `Ticket Scans` = COUNT(*)"
+        },
+        "metrics": [{ "type": "primary", "column": "Ticket Scans" }]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "pos-revenue-timeline",
+      "grid": { "x": 0, "y": 5, "w": 24, "h": 12 },
+      "config": {
+        "title": "POS Revenue Over Time",
+        "type": "xy",
+        "axis": {
+          "x": {
+            "title": { "visible": false },
+            "scale": "temporal",
+            "domain": { "type": "fit", "rounding": false }
+          },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "area",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM square-pos-transactions | WHERE transaction_time <= ?_tend AND transaction_time > ?_tstart | STATS `POS Revenue` = SUM(total_amount) BY BUCKET(transaction_time, 75, ?_tstart, ?_tend)"
+            },
+            "x": {
+              "column": "BUCKET(transaction_time, 75, ?_tstart, ?_tend)",
+              "label": "transaction_time"
+            },
+            "y": [{ "column": "POS Revenue", "format": { "type": "number", "decimals": 0 } }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "pos-txn-timeline",
+      "grid": { "x": 24, "y": 5, "w": 24, "h": 12 },
+      "config": {
+        "title": "POS Transaction Volume Over Time",
+        "type": "xy",
+        "axis": {
+          "x": {
+            "title": { "visible": false },
+            "scale": "temporal",
+            "domain": { "type": "fit", "rounding": false }
+          },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "line",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM square-pos-transactions | WHERE transaction_time <= ?_tend AND transaction_time > ?_tstart | STATS `Transactions` = COUNT(*) BY BUCKET(transaction_time, 75, ?_tstart, ?_tend)"
+            },
+            "x": {
+              "column": "BUCKET(transaction_time, 75, ?_tstart, ?_tend)",
+              "label": "transaction_time"
+            },
+            "y": [{ "column": "Transactions" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "halftime-spike",
+      "grid": { "x": 0, "y": 17, "w": 24, "h": 12 },
+      "config": {
+        "title": "Halftime Rush — 5-Minute Transaction Buckets",
+        "type": "xy",
+        "axis": {
+          "x": {
+            "title": { "visible": false },
+            "scale": "temporal",
+            "domain": { "type": "fit", "rounding": false }
+          },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM square-pos-transactions | STATS txns = COUNT(*), revenue = SUM(total_amount) BY BUCKET(transaction_time, 5 minute) | LIMIT 60"
+            },
+            "x": {
+              "column": "BUCKET(transaction_time, 5 minute)",
+              "label": "transaction_time"
+            },
+            "y": [{ "column": "txns" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "revenue-by-stand",
+      "grid": { "x": 24, "y": 17, "w": 24, "h": 12 },
+      "config": {
+        "title": "Revenue by Concession Stand",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar_horizontal",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM square-pos-transactions | STATS revenue = SUM(total_amount), txns = COUNT(*) BY stand_name | SORT revenue DESC | LIMIT 10"
+            },
+            "x": { "column": "revenue", "format": { "type": "number", "decimals": 0 } },
+            "y": [{ "column": "stand_name" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "revenue-by-zone",
+      "grid": { "x": 0, "y": 29, "w": 24, "h": 10 },
+      "config": {
+        "title": "POS Revenue by Stadium Zone",
+        "type": "xy",
+        "axis": {
+          "x": { "title": { "visible": false } },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "bar",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM square-pos-transactions | STATS revenue = SUM(total_amount) BY stand_zone | SORT revenue DESC"
+            },
+            "x": { "column": "stand_zone" },
+            "y": [{ "column": "revenue", "format": { "type": "number", "decimals": 0 } }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "ticket-scans-timeline",
+      "grid": { "x": 24, "y": 29, "w": 24, "h": 10 },
+      "config": {
+        "title": "Gate Scans Over Time (Paciolan)",
+        "type": "xy",
+        "axis": {
+          "x": {
+            "title": { "visible": false },
+            "scale": "temporal",
+            "domain": { "type": "fit", "rounding": false }
+          },
+          "y": { "title": { "visible": false } }
+        },
+        "layers": [
+          {
+            "type": "area",
+            "data_source": {
+              "type": "esql",
+              "query": "FROM paciolan-ticket-events | WHERE scan_timestamp <= ?_tend AND scan_timestamp > ?_tstart | STATS scans = COUNT(*) BY BUCKET(scan_timestamp, 75, ?_tstart, ?_tend)"
+            },
+            "x": {
+              "column": "BUCKET(scan_timestamp, 75, ?_tstart, ?_tend)",
+              "label": "scan_timestamp"
+            },
+            "y": [{ "column": "scans" }]
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "stand-table",
+      "grid": { "x": 0, "y": 39, "w": 48, "h": 12 },
+      "config": {
+        "title": "Stand Performance Summary",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM square-pos-transactions | STATS revenue = SUM(total_amount), txns = COUNT(*), avg_ticket = AVG(total_amount) BY stand_id, stand_name, stand_zone | SORT revenue DESC"
+        },
+        "rows": [
+          { "column": "stand_id" },
+          { "column": "stand_name" },
+          { "column": "stand_zone" }
+        ],
+        "metrics": [
+          { "column": "revenue", "format": { "type": "number", "decimals": 0 } },
+          { "column": "txns" },
+          { "column": "avg_ticket", "format": { "type": "number", "decimals": 2 } }
+        ]
+      }
+    }
+  ],
+  "time_range": {
+    "from": "2025-09-06T13:00:00.000Z",
+    "to": "2025-09-06T18:00:00.000Z"
+  }
+}

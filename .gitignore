@@ -6,5 +6,7 @@ venv/
 node_modules/
 dist/
 data/donors.ndjson
+data/okstate-donors.ndjson
 data/engagement-events-low-signal.ndjson
+data/okstate-engagement-events-low-signal.ndjson
 .DS_Store

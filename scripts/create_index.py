@@ -7,7 +7,8 @@ import argparse
 import json
 from pathlib import Path
 
-from es_config import INDEX_NAME, ROOT, get_client
+from es_config import ROOT, get_client
+from demo_profile import add_profile_argument, load_profile
 
 
 def load_mapping(path: Path) -> dict:
@@ -39,6 +40,7 @@ def check_elser(client) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Create athletic-boosters index")
+    add_profile_argument(parser)
     parser.add_argument(
         "--mapping",
         type=Path,
@@ -50,20 +52,22 @@ def main() -> None:
         help="Delete existing index before creating",
     )
     args = parser.parse_args()
+    profile = load_profile(args.profile)
+    index_name = profile.index("athletic-boosters")
 
     client = get_client()
     mapping = load_mapping(args.mapping)
 
-    if client.indices.exists(index=INDEX_NAME):
+    if client.indices.exists(index=index_name):
         if args.recreate:
-            print(f"Deleting existing index: {INDEX_NAME}")
-            client.indices.delete(index=INDEX_NAME)
+            print(f"Deleting existing index: {index_name}")
+            client.indices.delete(index=index_name)
         else:
-            print(f"Index {INDEX_NAME} already exists. Use --recreate to replace.")
+            print(f"Index {index_name} already exists. Use --recreate to replace.")
             return
 
-    print(f"Creating index: {INDEX_NAME}")
-    client.indices.create(index=INDEX_NAME, mappings=mapping["mappings"])
+    print(f"Creating index: {index_name}")
+    client.indices.create(index=index_name, mappings=mapping["mappings"])
     print("✓ Index created")
 
     check_elser(client)

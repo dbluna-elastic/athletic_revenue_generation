@@ -1,0 +1,20 @@
+{
+  "mappings": {
+    "properties": {
+      "transaction_id": { "type": "keyword" },
+      "game_id": { "type": "keyword" },
+      "transaction_time": { "type": "date" },
+      "stand_id": { "type": "keyword" },
+      "stand_name": { "type": "keyword" },
+      "stand_zone": { "type": "keyword" },
+      "category": { "type": "keyword" },
+      "item_name": { "type": "keyword" },
+      "quantity": { "type": "integer" },
+      "unit_price": { "type": "float" },
+      "total_amount": { "type": "float" },
+      "payment_method": { "type": "keyword" },
+      "is_anomaly": { "type": "boolean" },
+      "source_system": { "type": "keyword" }
+    }
+  }
+}
