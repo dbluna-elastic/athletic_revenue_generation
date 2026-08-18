@@ -28,4 +28,7 @@ echo "=== Dashboards ==="
 python scripts/deploy_gameday_dashboards.py "${PROFILE[@]}"
 python scripts/deploy_kibana_dashboard.py "${PROFILE[@]}" kibana/at-risk-engagement-dashboard.json --id booster-at-risk-engagement
 
+echo "=== Agent Builder ==="
+python scripts/deploy_okstate_agents.py
+
 echo "Oklahoma State demo ready."

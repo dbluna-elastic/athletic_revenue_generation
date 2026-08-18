@@ -234,6 +234,21 @@ Hybrid search body: `elastic/okstate-demo-hybrid-search.json` (`POST /okstate-at
 | Fan Segments & Anomalies | [okstate-gameday-fan-segments](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/dashboards#/view/okstate-gameday-fan-segments) |
 | At-Risk Donors | [okstate-booster-at-risk-engagement](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/dashboards#/view/okstate-booster-at-risk-engagement) |
 
+### Agent Builder assistants
+
+Scoped to `okstate-*` indexes only (Texas College assistants are unchanged).
+
+| Assistant | URL |
+|---|---|
+| Oklahoma State Donor Assistant | [okstate-donor-assistant](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/agent_builder/agents/okstate-donor-assistant) |
+| Oklahoma State Game Day Revenue Assistant | [okstate-gameday-revenue-assistant](https://gawdzilla-0d3e9e.kb.us-east-2.aws.elastic-cloud.com/app/agent_builder/agents/okstate-gameday-revenue-assistant) |
+
+Redeploy tools and agents:
+
+```bash
+python scripts/deploy_okstate_agents.py
+```
+
 Profile definition: [profiles/oklahoma-state.yaml](profiles/oklahoma-state.yaml).
 
 ### Golden records are seeded as high-affinity Texas prospects: 10+ game attendance, iWave 75–99, $2M+ real estate, and strong giving — so the demo query surfaces known hits in the top results.

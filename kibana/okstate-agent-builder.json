@@ -1,0 +1,266 @@
+{
+  "tools": [
+    {
+      "id": "okstate-booster-donor-portfolio-stats",
+      "type": "esql",
+      "description": "Oklahoma State Athletic Advancement portfolio summary from okstate-athletic-boosters: donor count, average affinity score, and total lifetime giving. Use for counts, totals, and overview questions.",
+      "tags": ["booster", "oklahoma-state", "stats"],
+      "configuration": {
+        "query": "FROM okstate-athletic-boosters | STATS avg_affinity = AVG(affinity_score), total_lifetime = SUM(giving_history.lifetime_total), donor_count = COUNT(*) | LIMIT 1",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-booster-at-risk-donors",
+      "type": "esql",
+      "description": "List at-risk Oklahoma State athletic boosters where affinity_score < 40 OR engagement.email_open_rate_90d < 0.2. Returns donor_id, name, affinity, lifetime giving, email open rate, last gift date. Use for at-risk, lapsed, or declining engagement questions.",
+      "tags": ["booster", "oklahoma-state", "at-risk"],
+      "configuration": {
+        "query": "FROM okstate-athletic-boosters | WHERE affinity_score < 40 OR engagement.email_open_rate_90d < 0.2 | SORT affinity_score ASC | KEEP donor_id, first_name, last_name, affinity_score, giving_history.lifetime_total, engagement.email_open_rate_90d, giving_history.last_gift_date | LIMIT 25",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-booster-at-risk-major-gifts",
+      "type": "esql",
+      "description": "Oklahoma State major-gift donors (lifetime giving >= 50000) with declining engagement: affinity_score < 45 OR email_open_rate_90d < 0.15. Sorted by lifetime giving descending. Use for major gifts at risk.",
+      "tags": ["booster", "oklahoma-state", "major-gifts"],
+      "configuration": {
+        "query": "FROM okstate-athletic-boosters | WHERE giving_history.lifetime_total >= 50000 AND (affinity_score < 45 OR engagement.email_open_rate_90d < 0.15) | SORT giving_history.lifetime_total DESC | KEEP donor_id, first_name, last_name, affinity_score, giving_history.lifetime_total, giving_history.last_gift_date, engagement.email_open_rate_90d | LIMIT 15",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-booster-top-affinity-donors",
+      "type": "esql",
+      "description": "Highest affinity_score Oklahoma State donors from okstate-athletic-boosters with degree, graduation year, lifetime giving, and estimated capacity. Use for top prospects and high-affinity lists.",
+      "tags": ["booster", "oklahoma-state", "affinity"],
+      "configuration": {
+        "query": "FROM okstate-athletic-boosters | SORT affinity_score DESC | KEEP donor_id, first_name, last_name, affinity_score, giving_history.lifetime_total, degree, graduation_year, wealth_signals.estimated_capacity | LIMIT 10",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-booster-ok-prospects",
+      "type": "esql",
+      "description": "Oklahoma State golden-prospect slice: OK residents with 3+ football games attended and estimated real estate >= $2M. Use for Oklahoma alumni, real-estate wealth, and game-attendance prospect questions.",
+      "tags": ["booster", "oklahoma-state", "prospects"],
+      "configuration": {
+        "query": "FROM okstate-athletic-boosters | WHERE location.state == \"OK\" AND engagement.game_attendance_count >= 3 AND wealth_signals.real_estate_value_est >= 2000000 | SORT affinity_score DESC | KEEP donor_id, first_name, last_name, affinity_score, location.city, location.state, engagement.game_attendance_count, wealth_signals.real_estate_value_est, wealth_signals.iwave_score, giving_history.lifetime_total | LIMIT 20",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-booster-donor-by-id",
+      "type": "esql",
+      "description": "Full Oklahoma State donor profile from okstate-athletic-boosters for an exact donor_id (e.g. ALUM-10050): giving history, engagement, wealth signals, affinity, bio.",
+      "tags": ["booster", "oklahoma-state", "lookup"],
+      "configuration": {
+        "query": "FROM okstate-athletic-boosters | WHERE donor_id == ?donor_id | KEEP donor_id, first_name, last_name, email, graduation_year, degree, portfolio_status, affinity_score, location.city, location.state, location.zip, giving_history.lifetime_total, giving_history.last_gift_date, giving_history.last_gift_amount, giving_history.gift_count, giving_history.largest_gift, giving_history.restricted_to, engagement.email_open_rate_90d, engagement.last_email_open, engagement.events_attended_ytd, engagement.game_attendance_count, engagement.video_play_rate, engagement.portal_logins_90d, wealth_signals.iwave_score, wealth_signals.estimated_capacity, wealth_signals.real_estate_value_est, wealth_signals.business_ownership, wealth_signals.political_giving_total, bio_text | LIMIT 1",
+        "params": {
+          "donor_id": {
+            "type": "string",
+            "description": "Exact donor_id keyword, e.g. ALUM-10050"
+          }
+        }
+      }
+    },
+    {
+      "id": "okstate-booster-engagement-events-summary",
+      "type": "esql",
+      "description": "Count of Oklahoma State engagement events by event_type from okstate-booster-engagement-events (portal_login, email_open, event_attendance, gift_made, call_completed, etc.).",
+      "tags": ["booster", "oklahoma-state", "engagement"],
+      "configuration": {
+        "query": "FROM okstate-booster-engagement-events | STATS events = COUNT(*) BY event_type | SORT events DESC | LIMIT 8",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-athletic-boosters-search",
+      "type": "index_search",
+      "description": "Semantic and keyword search over Oklahoma State athletic booster bios and donor profiles in okstate-athletic-boosters. Use for open-ended prospect discovery (Oklahoma alumni, football attendance, real estate, Cowboy Athletics fund).",
+      "tags": ["booster", "oklahoma-state", "search"],
+      "configuration": {
+        "pattern": "okstate-athletic-boosters"
+      }
+    },
+    {
+      "id": "okstate-gameday-revenue-summary",
+      "type": "esql",
+      "description": "Oklahoma State Paciolan ticket gameday summary from okstate-paciolan-ticket-events: scans, ticket revenue, average price, and resale scan count. Default game is OKSTATE-2025-HOME-01 at Boone Pickens Stadium.",
+      "tags": ["gameday", "oklahoma-state", "tickets"],
+      "configuration": {
+        "query": "FROM okstate-paciolan-ticket-events | STATS ticket_scans = COUNT(*), ticket_revenue = SUM(ticket_price), avg_ticket = AVG(ticket_price), resale_scans = COUNT(*) WHERE is_resale == true | LIMIT 1",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-pos-summary",
+      "type": "esql",
+      "description": "Oklahoma State Square POS concessions and merch summary from okstate-square-pos-transactions: transactions, revenue, units sold, average sale.",
+      "tags": ["gameday", "oklahoma-state", "pos"],
+      "configuration": {
+        "query": "FROM okstate-square-pos-transactions | STATS txns = COUNT(*), pos_revenue = SUM(total_amount), units_sold = SUM(quantity), avg_sale = AVG(total_amount) | LIMIT 1",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-pos-by-stand",
+      "type": "esql",
+      "description": "Oklahoma State concession and team-store revenue by stand_id and stand_name (Boone Pickens North Beer Garden, Club Orange Premium Bar, Cowboy Team Store, West Concourse Grill, East End Zone Bar, etc.).",
+      "tags": ["gameday", "oklahoma-state", "stands"],
+      "configuration": {
+        "query": "FROM okstate-square-pos-transactions | STATS revenue = SUM(total_amount), txns = COUNT(*) BY stand_id, stand_name, stand_zone | SORT revenue DESC | LIMIT 15",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-pos-by-category",
+      "type": "esql",
+      "description": "Oklahoma State concessions and retail revenue by category (jersey, beer, food, etc.) from okstate-square-pos-transactions.",
+      "tags": ["gameday", "oklahoma-state", "pos"],
+      "configuration": {
+        "query": "FROM okstate-square-pos-transactions | STATS revenue = SUM(total_amount), txns = COUNT(*) BY category | SORT revenue DESC | LIMIT 12",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-pos-by-zone",
+      "type": "esql",
+      "description": "Oklahoma State concessions and retail revenue by Boone Pickens Stadium zone (North, South, Premium, West, East, Main, Student, Visitor).",
+      "tags": ["gameday", "oklahoma-state", "zones"],
+      "configuration": {
+        "query": "FROM okstate-square-pos-transactions | STATS revenue = SUM(total_amount), txns = COUNT(*) BY stand_zone | SORT revenue DESC | LIMIT 10",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-top-stands",
+      "type": "esql",
+      "description": "Top Oklahoma State concession and Cowboy Team Store stands by revenue and transaction count.",
+      "tags": ["gameday", "oklahoma-state", "stands"],
+      "configuration": {
+        "query": "FROM okstate-square-pos-transactions | STATS revenue = SUM(total_amount), txns = COUNT(*) BY stand_name | SORT revenue DESC | LIMIT 10",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-pos-anomaly-window",
+      "type": "esql",
+      "description": "Oklahoma State POS transactions during the halftime anomaly window (2025-09-06 15:50-16:05 UTC) for stands S04 Club Orange Premium Bar, S06 West Concourse Grill, and S09 East End Zone Bar. Expect near-zero sales — simulated payment processor outage.",
+      "tags": ["gameday", "oklahoma-state", "anomaly"],
+      "configuration": {
+        "query": "FROM okstate-square-pos-transactions | WHERE stand_id IN (\"S04\", \"S06\", \"S09\") AND transaction_time >= \"2025-09-06T15:50:00Z\" AND transaction_time <= \"2025-09-06T16:05:00Z\" | STATS txns = COUNT(*), revenue = SUM(total_amount) BY stand_id | LIMIT 10",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-hourly-gate-scans",
+      "type": "esql",
+      "description": "Hourly Boone Pickens gate arrival pattern from Oklahoma State Paciolan ticket scan timestamps.",
+      "tags": ["gameday", "oklahoma-state", "arrivals"],
+      "configuration": {
+        "query": "FROM okstate-paciolan-ticket-events | EVAL hour = DATE_TRUNC(1 hour, scan_timestamp) | STATS scans = COUNT(*) BY hour | SORT hour ASC | LIMIT 24",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-ticket-by-type",
+      "type": "esql",
+      "description": "Oklahoma State ticket revenue and scans grouped by ticket type (alumni_general, premium_club, student, etc.).",
+      "tags": ["gameday", "oklahoma-state", "tickets"],
+      "configuration": {
+        "query": "FROM okstate-paciolan-ticket-events | STATS revenue = SUM(ticket_price), scans = COUNT(*) BY ticket_type | SORT revenue DESC | LIMIT 10",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-ticket-by-fan-tier",
+      "type": "esql",
+      "description": "Oklahoma State ticket revenue and scan counts grouped by fan tier (Premium, Alumni, Student, Suite Holder, Walk-Up, Faculty/Staff).",
+      "tags": ["gameday", "oklahoma-state", "fan-segments"],
+      "configuration": {
+        "query": "FROM okstate-paciolan-ticket-events | STATS revenue = SUM(ticket_price), scans = COUNT(*) BY fan_tier | SORT revenue DESC | LIMIT 10",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-ticket-by-gate",
+      "type": "esql",
+      "description": "Boone Pickens Stadium gate traffic: scan counts and ticket revenue by gate (Gate 1 — West, Gate 2 — South, Gate 3 — East, Gate 4 — North, Student Gate, Pistol Pete Plaza).",
+      "tags": ["gameday", "oklahoma-state", "gates"],
+      "configuration": {
+        "query": "FROM okstate-paciolan-ticket-events | STATS scans = COUNT(*), revenue = SUM(ticket_price) BY gate | SORT scans DESC | LIMIT 10",
+        "params": {}
+      }
+    },
+    {
+      "id": "okstate-gameday-resale-activity",
+      "type": "esql",
+      "description": "Oklahoma State Paciolan ticket resale scan counts and revenue by fan tier and gate (possible scalping / secondary-market activity).",
+      "tags": ["gameday", "oklahoma-state", "resale"],
+      "configuration": {
+        "query": "FROM okstate-paciolan-ticket-events | WHERE is_resale == true | STATS resale_scans = COUNT(*), resale_revenue = SUM(ticket_price) BY fan_tier, gate | SORT resale_scans DESC | LIMIT 12",
+        "params": {}
+      }
+    }
+  ],
+  "agents": [
+    {
+      "id": "okstate-donor-assistant",
+      "name": "Oklahoma State Donor Assistant",
+      "description": "Chat with Oklahoma State athletic booster and donor engagement data for Cowboy Athletics advancement teams.",
+      "labels": ["booster", "donors", "athletics", "oklahoma-state"],
+      "avatar_color": "#FF7300",
+      "avatar_symbol": "🤠",
+      "configuration": {
+        "instructions": "You are the Oklahoma State Athletic Advancement assistant for Cowboy Athletics (Stillwater). Never use Texas College indexes or unprefixed athletic-boosters data.\n\n## Data (okstate-* only)\n- okstate-athletic-boosters: donor profiles (affinity_score, giving_history, engagement, wealth_signals, bio_text)\n- okstate-booster-donor-lookup: quick donor lookup\n- okstate-booster-engagement-events: engagement events\n\n## Rules\n1. ALWAYS use the custom okstate-booster-* tools first. Do NOT call list_indices or get_index_mapping unless the user explicitly asks about index structure.\n2. Always retrieve data with tools. Never answer donor counts, names, or giving figures from memory.\n3. Map questions to tools:\n   - counts/summary → okstate-booster-donor-portfolio-stats\n   - at-risk donors → okstate-booster-at-risk-donors\n   - at-risk major gifts → okstate-booster-at-risk-major-gifts\n   - top affinity → okstate-booster-top-affinity-donors\n   - Oklahoma alumni / 3+ games / $2M+ real estate / golden prospects → okstate-booster-ok-prospects\n   - donor by ID → okstate-booster-donor-by-id\n   - engagement breakdown → okstate-booster-engagement-events-summary\n   - open-ended bio/prospect search → okstate-athletic-boosters-search\n4. Format currency as USD, rates as percentages.\n5. Give concise, actionable Cowboy Athletics fund recommendations.\n6. If a tool returns no rows, say so clearly.\n7. All data is simulated for demo purposes only.",
+        "tools": [
+          {
+            "tool_ids": [
+              "okstate-booster-donor-portfolio-stats",
+              "okstate-booster-at-risk-donors",
+              "okstate-booster-at-risk-major-gifts",
+              "okstate-booster-top-affinity-donors",
+              "okstate-booster-ok-prospects",
+              "okstate-booster-donor-by-id",
+              "okstate-booster-engagement-events-summary",
+              "okstate-athletic-boosters-search",
+              "platform.core.get_document_by_id"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "okstate-gameday-revenue-assistant",
+      "name": "Oklahoma State Game Day Revenue Assistant",
+      "description": "Chat with Paciolan ticket scans and Square POS gameday revenue for Oklahoma State Athletics at Boone Pickens Stadium.",
+      "labels": ["gameday", "revenue", "athletics", "oklahoma-state"],
+      "avatar_color": "#000000",
+      "avatar_symbol": "🏈",
+      "configuration": {
+        "instructions": "You are the Oklahoma State Athletics **Game Day Revenue** assistant for Boone Pickens Stadium. Never use Texas College indexes or unprefixed paciolan-ticket-events / square-pos-transactions data.\n\n## Data indices (okstate-* only)\n- **okstate-paciolan-ticket-events**: Ticket scans (fan_tier, gate, ticket_type, ticket_price, is_resale). Game ID: **OKSTATE-2025-HOME-01**.\n- **okstate-square-pos-transactions**: Square POS concessions and Cowboy Team Store merch (stand_id, stand_name, stand_zone, category, total_amount).\n\n## Stands (Boone Pickens)\n- S01 Boone Pickens North Beer Garden (North)\n- S02 Cowboy Grill — Gate 1 (North)\n- S03 South End Zone Cantina (South)\n- S04 Club Orange Premium Bar (Premium) — **anomaly stand**\n- S05 Student Section Snacks (Student)\n- S06 West Concourse Grill (West) — **anomaly stand**\n- S07 Cowboy Team Store — Main (Main)\n- S08 Cowboy Team Store — South (South)\n- S09 East End Zone Bar (East) — **anomaly stand**\n- S10 Visiting Fan Concessions (Visitor)\n\nGates: Gate 1 — West, Gate 2 — South, Gate 3 — East, Gate 4 — North, Student Gate, Pistol Pete Plaza.\n\n## Skills — map questions to tools\n1. **Ticket revenue / scans** → okstate-gameday-revenue-summary\n2. **POS / concessions / merch totals** → okstate-gameday-pos-summary\n3. **Stand performance / which stand** → okstate-gameday-pos-by-stand or okstate-gameday-top-stands\n4. **Category mix** (beer, jerseys, food) → okstate-gameday-pos-by-category\n5. **Zone mix** → okstate-gameday-pos-by-zone\n6. **Anomaly / outage / S04 S06 S09 / Club Orange / West Concourse / East End Zone drop** → okstate-gameday-pos-anomaly-window (halftime 15:50–16:05Z on 2025-09-06; expect ~0 txns)\n7. **Arrivals / hourly scans** → okstate-gameday-hourly-gate-scans\n8. **Ticket type** → okstate-gameday-ticket-by-type\n9. **Fan tiers** → okstate-gameday-ticket-by-fan-tier\n10. **Gate traffic** → okstate-gameday-ticket-by-gate\n11. **Resale / scalping** → okstate-gameday-resale-activity\n\n## Rules\n1. ALWAYS use okstate-gameday-* ES|QL tools first. Do NOT call list_indices unless asked.\n2. Always retrieve data with tools. Never invent revenue figures.\n3. Format currency as USD. Default game: **OKSTATE-2025-HOME-01**.\n4. Combined gameday revenue = ticket_revenue + pos_revenue from the two summary tools.\n5. The demo story: stands S04, S06, and S09 drop to zero during 15:50–16:05 UTC (payment processor issue).\n6. All data is simulated for demo purposes only.",
+        "tools": [
+          {
+            "tool_ids": [
+              "okstate-gameday-revenue-summary",
+              "okstate-gameday-pos-summary",
+              "okstate-gameday-pos-by-stand",
+              "okstate-gameday-pos-by-category",
+              "okstate-gameday-pos-by-zone",
+              "okstate-gameday-top-stands",
+              "okstate-gameday-pos-anomaly-window",
+              "okstate-gameday-hourly-gate-scans",
+              "okstate-gameday-ticket-by-type",
+              "okstate-gameday-ticket-by-fan-tier",
+              "okstate-gameday-ticket-by-gate",
+              "okstate-gameday-resale-activity",
+              "platform.core.get_document_by_id"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
